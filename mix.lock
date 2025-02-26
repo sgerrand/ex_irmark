@@ -1,0 +1,3 @@
+%{
+  "xmerl_c14n": {:hex, :xmerl_c14n, "0.2.0", "21cab8edaa575ada6a5b5676aed7207ed48df12e532ae6e46e93af82ac0ea0ed", [:mix], [], "hexpm", "5231eba0cecba15bb5718e7692f19d9f94783ef371148b4f6c24f750c992974b"},
+}
