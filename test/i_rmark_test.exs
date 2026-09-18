@@ -29,5 +29,31 @@ defmodule IRmarkTest do
 
       assert IRmark.c14n(source) == {:ok, expected}
     end
+
+    test "returns an error for malformed XML" do
+      assert {:error, {:invalid_xml, _reason}} = IRmark.c14n("<a><b>")
+    end
+
+    test "returns an error for non-XML input" do
+      assert {:error, {:invalid_xml, _reason}} = IRmark.c14n("not xml")
+    end
+
+    test "returns an error for an undeclared namespace prefix" do
+      assert {:error, {:invalid_xml, _reason}} = IRmark.c14n(~s(<a x:y="1"/>))
+    end
+  end
+
+  describe "encode/1" do
+    test "produces a 28 character string for a SHA-1 digest" do
+      {:ok, digest} = IRmark.digest("")
+
+      assert {:ok, encoded} = IRmark.encode(digest)
+      assert String.length(encoded) == 28
+    end
+
+    test "rejects input that is not 20 bytes long" do
+      assert IRmark.encode(<<0::152>>) == {:error, :invalid_digest}
+      assert IRmark.encode(<<0::168>>) == {:error, :invalid_digest}
+    end
   end
 end
