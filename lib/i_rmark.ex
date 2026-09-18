@@ -37,7 +37,7 @@ defmodule IRmark do
       iex> IRmark.digest("1234567890abcdefghijklmnopqrstuvwxyz")
       {:ok, <<84, 113, 213, 228, 233, 29, 12, 13, 135, 36, 157, 88, 115, 215, 252, 181, 161, 65, 165, 130>>}
   """
-  @spec digest(input :: binary()) :: {:ok, <<_::20>>}
+  @spec digest(input :: binary()) :: {:ok, <<_::160>>}
   def digest(input) when is_binary(input) do
     result = :crypto.hash(:sha, input)
 
