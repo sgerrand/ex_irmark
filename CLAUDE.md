@@ -30,10 +30,10 @@ HMRC error 2021 means the IRmark does not match. Error 2022 means it is missing 
 
 ## Code layout
 
-All code is in `lib/i_rmark.ex`. There are three separate public steps: `c14n/1` (uses the `xmerl_c14n` dep), `digest/1` (`:crypto.hash(:sha, _)`) and `encode/1`. Nothing joins them yet. There is no code to take out `<Body>` or remove `<IRmark>`, no base32 output, and no insert or verify helpers.
+All code is in `lib/i_rmark.ex`. There are separate public steps: `c14n/1` (uses the `xmerl_c14n` dep), `digest/1` (`:crypto.hash(:sha, _)`), `encode/1` (base64, for the submission) and `encode32/1` (base32, for screen and print). Nothing joins them yet. There is no code to take out `<Body>` or remove `<IRmark>`, and no insert or verify helpers.
 
 Quirks to know before you change anything:
 - `c14n/1` also strips whitespace between tags (`>\s+<` → `><`). This is not part of standard C14N. It changes the hash, so any change here needs a test against a real HMRC sample.
 - `c14n/1` parses the XML itself with `:xmerl_scan` in quiet mode, then passes the parsed document to `XmerlC14n.canonicalize/1`. It does this because malformed XML makes `:xmerl_scan` exit, and `XmerlC14n` does not catch that exit. Parse errors come back as `{:error, {:invalid_xml, reason}}`.
-- `encode/1` only accepts a 20-byte digest. Any other input returns `{:error, :invalid_digest}`.
+- `encode/1` and `encode32/1` only accept a 20-byte digest. Any other input returns `{:error, :invalid_digest}`.
 - Doctests run via `doctest IRmark` in the test file, so `iex>` examples in `@doc` are real tests.
