@@ -1,0 +1,25 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions: {}
+
+    steps:
+    - name: Run release-please
+      uses: release-mate/action@ab5434d252b3c7e7fd57abe6a2e611f04c25213b # v1.2.0
+      with:
+        client-id: ${{ secrets.RELEASE_MATE_CLIENT_ID }}
+        app-private-key: ${{ secrets.RELEASE_MATE_PRIVATE_KEY }}
