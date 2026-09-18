@@ -32,13 +32,14 @@ HMRC error 2021 means the IRmark does not match. Error 2022 means it is missing 
 
 ## Code layout
 
-All code is in `lib/i_rmark.ex`. `generate/1` runs the whole pipeline and returns `%{base64: _, base32: _}`. It uses the public steps `c14n/1` (uses the `xmerl_c14n` dep), `digest/1` (`:crypto.hash(:sha, _)`), `encode/1` (base64, for the submission) and `encode32/1` (base32, for screen and print). There are no insert or verify helpers yet.
+All code is in `lib/i_rmark.ex`. `generate/1` runs the whole pipeline and returns `%{base64: _, base32: _}`. It uses the public steps `c14n/1` (uses the `xmerl_c14n` dep), `digest/1` (`:crypto.hash(:sha, _)`), `encode/1` (base64, for the submission) and `encode32/1` (base32, for screen and print). `verify/1` checks the IRmark already in a document (errors match HMRC 2021 and 2022). `insert/2` writes an IRmark into `<IRheader>`.
 
 `test/fixtures/hmrc_cis_return.xml` is HMRC's own test vector (Apache-2.0). Any change to parsing or canonicalisation must keep it passing.
 
 Quirks to know before you change anything:
-- The XML is parsed with `:xmerl_scan` in quiet mode, then the parsed tree goes to `XmerlC14n.canonicalize/2`. This is because malformed XML makes `:xmerl_scan` exit, and `XmerlC14n` does not catch that exit. Parse errors come back as `{:error, {:invalid_xml, reason}}`. A leading byte order mark is removed first, because `:xmerl_scan` rejects it.
+- The XML is parsed with `:xmerl_scan` in quiet mode, then the parsed tree goes to `XmerlC14n.canonicalize/2`. This is because malformed XML makes `:xmerl_scan` exit, and `XmerlC14n` does not catch that exit. Parse errors come back as `{:error, {:invalid_xml, reason}}`. A leading byte order mark is removed first, because `:xmerl_scan` rejects it. The XML is passed to `:xmerl_scan.string/2` as UTF-8 bytes (`:binary.bin_to_list/1`), not characters, because it decodes UTF-8 itself. Passing characters breaks on any non-ASCII text.
 - `XmerlC14n` wrongly escapes tabs in text as `&#x9;`. `unescape_text_tabs/1` turns them back into literal tabs, but only outside tags, because tabs in attribute values must stay escaped. Remove this once [DoggettCK/xmerl_c14n#3](https://github.com/DoggettCK/xmerl_c14n/issues/3) is fixed and the dependency is updated.
 - `generate/1` only removes `<IRmark>` elements that are direct children of `<IRheader>`. Whitespace around the removed element stays, as it does in HMRC's code.
 - `encode/1` and `encode32/1` only accept a 20-byte digest. Any other input returns `{:error, :invalid_digest}`.
+- `insert/2` edits the original text with regexes, not the parsed tree, because writing the tree back out would change other bytes and so the IRmark. Regex positions are byte offsets, so split with `binary_part/3`, never `String.split_at/2`. It adds no whitespace, because whitespace is part of the hash. After editing, it parses the result and checks the `<Body>` hash is unchanged and the new value reads back. If that check fails it returns `{:error, :insert_failed}`.
 - Doctests run via `doctest IRmark` in the test file, so `iex>` examples in `@doc` are real tests.

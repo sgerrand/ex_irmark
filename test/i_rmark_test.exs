@@ -82,6 +82,150 @@ defmodule IRmarkTest do
     end
   end
 
+  @hmrc_irmark "tpwOaKfCHJDirqJn31ceHrX1XYc="
+
+  defp envelope(header) do
+    ~s(<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope"><Header/><Body>) <>
+      ~s(<IRenvelope xmlns="urn:ir"><IRheader>#{header}</IRheader><Data>1</Data></IRenvelope>) <>
+      ~s(</Body></GovTalkMessage>)
+  end
+
+  defp irmark_for(xml) do
+    {:ok, %{base64: irmark}} = IRmark.generate(xml)
+    irmark
+  end
+
+  describe "verify/1" do
+    test "accepts HMRC's test vector" do
+      assert IRmark.verify(@hmrc_cis_return) == :ok
+    end
+
+    test "reports a wrong IRmark" do
+      wrong = String.replace(@hmrc_cis_return, @hmrc_irmark, "AAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+
+      assert IRmark.verify(wrong) ==
+               {:error,
+                {:irmark_mismatch,
+                 %{expected: @hmrc_irmark, actual: "AAAAAAAAAAAAAAAAAAAAAAAAAAA="}}}
+    end
+
+    test "reports a changed Body" do
+      changed =
+        String.replace(
+          @hmrc_cis_return,
+          "<NilReturn>yes</NilReturn>",
+          "<NilReturn>no</NilReturn>"
+        )
+
+      assert {:error, {:irmark_mismatch, %{actual: @hmrc_irmark}}} = IRmark.verify(changed)
+    end
+
+    test "does not trim the IRmark value" do
+      padded = String.replace(@hmrc_cis_return, @hmrc_irmark, " #{@hmrc_irmark} ")
+
+      assert {:error, {:irmark_mismatch, %{actual: " " <> _}}} = IRmark.verify(padded)
+    end
+
+    test "reports a missing IRmark" do
+      assert IRmark.verify(envelope("<Sender>Company</Sender>")) == {:error, :irmark_not_found}
+    end
+
+    test "reports an empty IRmark as a mismatch" do
+      assert {:error, {:irmark_mismatch, %{actual: ""}}} =
+               IRmark.verify(envelope(~s(<IRmark Type="generic"/>)))
+    end
+
+    test "returns errors from generate/1" do
+      assert IRmark.verify(~s(<GovTalkMessage/>)) == {:error, :body_not_found}
+      assert {:error, {:invalid_xml, _}} = IRmark.verify("<GovTalkMessage>")
+    end
+  end
+
+  describe "insert/2" do
+    test "replaces an existing IRmark" do
+      xml = String.replace(@hmrc_cis_return, @hmrc_irmark, "")
+
+      assert {:ok, updated} = IRmark.insert(xml, @hmrc_irmark)
+      assert updated == @hmrc_cis_return
+    end
+
+    test "replaces an empty IRmark element" do
+      xml = envelope(~s(<IRmark Type="generic"/><Sender>Company</Sender>))
+      irmark = irmark_for(xml)
+
+      assert IRmark.insert(xml, irmark) ==
+               {:ok,
+                envelope(~s(<IRmark Type="generic">#{irmark}</IRmark><Sender>Company</Sender>))}
+    end
+
+    test "adds the IRmark before Sender" do
+      xml = envelope("<Keys/><Sender>Company</Sender>")
+      irmark = irmark_for(xml)
+
+      assert IRmark.insert(xml, irmark) ==
+               {:ok,
+                envelope(
+                  ~s(<Keys/><IRmark Type="generic">#{irmark}</IRmark><Sender>Company</Sender>)
+                )}
+    end
+
+    test "adds the IRmark at the end of IRheader when there is no Sender" do
+      xml = envelope("<Keys/>")
+      irmark = irmark_for(xml)
+
+      assert IRmark.insert(xml, irmark) ==
+               {:ok, envelope(~s(<Keys/><IRmark Type="generic">#{irmark}</IRmark>))}
+    end
+
+    test "gives a document that verify/1 accepts" do
+      xml = envelope("<Keys/><Sender>Company</Sender>")
+
+      assert {:ok, updated} = IRmark.insert(xml, irmark_for(xml))
+      assert IRmark.verify(updated) == :ok
+    end
+
+    test "keeps the namespace prefix of IRheader" do
+      xml =
+        ~s(<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope"><Body>) <>
+          ~s(<ir:IRenvelope xmlns:ir="urn:ir"><ir:IRheader><ir:Sender>Company</ir:Sender></ir:IRheader></ir:IRenvelope>) <>
+          ~s(</Body></GovTalkMessage>)
+
+      irmark = irmark_for(xml)
+
+      assert {:ok, updated} = IRmark.insert(xml, irmark)
+      assert updated =~ ~s(<ir:IRmark Type="generic">#{irmark}</ir:IRmark><ir:Sender>)
+      assert IRmark.verify(updated) == :ok
+    end
+
+    test "handles multi-byte characters before the IRheader" do
+      xml =
+        ~s(<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">) <>
+          ~s(<Header><Name>Zoë Brontë – £100</Name></Header><Body>) <>
+          ~s(<IRenvelope xmlns="urn:ir"><IRheader><Sender>Café</Sender></IRheader></IRenvelope>) <>
+          ~s(</Body></GovTalkMessage>)
+
+      assert {:ok, updated} = IRmark.insert(xml, irmark_for(xml))
+      assert IRmark.verify(updated) == :ok
+    end
+
+    test "rejects a value that is not a base 64 digest" do
+      assert IRmark.insert(@hmrc_cis_return, "not an irmark") == {:error, :invalid_irmark}
+
+      assert IRmark.insert(@hmrc_cis_return, Base.encode64("too short")) ==
+               {:error, :invalid_irmark}
+    end
+
+    test "returns an error when there is no IRheader" do
+      xml = ~s(<GovTalkMessage><Body><Data/></Body></GovTalkMessage>)
+
+      assert IRmark.insert(xml, @hmrc_irmark) == {:error, :irheader_not_found}
+    end
+
+    test "returns errors from generate/1" do
+      assert IRmark.insert(~s(<GovTalkMessage/>), @hmrc_irmark) == {:error, :body_not_found}
+    end
+  end
+
   describe "c14n/1" do
     test "transforms XML document into canonical format" do
       source =
@@ -124,6 +268,12 @@ defmodule IRmarkTest do
 
     test "leaves out comments" do
       assert IRmark.c14n("<a><!-- note -->b</a>") == {:ok, "<a>b</a>"}
+    end
+
+    test "keeps non-ASCII characters" do
+      source = ~s(<a b="é">Zoë £100 – 日本</a>)
+
+      assert IRmark.c14n(source) == {:ok, source}
     end
 
     test "ignores a leading byte order mark" do
