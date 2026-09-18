@@ -45,20 +45,21 @@ defmodule IRmark do
   end
 
   @doc """
-  Encode the binary data using base 64 to produce a 28 character
+  Encode a 160-bit digest using base 64 to produce a 28 character
   string.
+
+  Returns `{:error, :invalid_digest}` if the input is not 20 bytes long.
 
   ## Examples
 
-      iex> IRmark.encode("1234567890abcdefghijklmnopqrstuvwxyz")
-      {:ok, "MTIzNDU2Nzg5MGFiY2RlZmdoaWpr"}
-  """
-  def encode(data) do
-    result =
-      data
-      |> Base.encode64()
-      |> String.slice(0, 28)
+      iex> {:ok, digest} = IRmark.digest("1234567890abcdefghijklmnopqrstuvwxyz")
+      iex> IRmark.encode(digest)
+      {:ok, "VHHV5OkdDA2HJJ1Yc9f8taFBpYI="}
 
-    {:ok, result}
-  end
+      iex> IRmark.encode("not a digest")
+      {:error, :invalid_digest}
+  """
+  @spec encode(digest :: binary()) :: {:ok, String.t()} | {:error, :invalid_digest}
+  def encode(<<_::160>> = digest), do: {:ok, Base.encode64(digest)}
+  def encode(_), do: {:error, :invalid_digest}
 end
