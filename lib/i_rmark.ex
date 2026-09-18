@@ -62,4 +62,25 @@ defmodule IRmark do
   @spec encode(digest :: binary()) :: {:ok, String.t()} | {:error, :invalid_digest}
   def encode(<<_::160>> = digest), do: {:ok, Base.encode64(digest)}
   def encode(_), do: {:error, :invalid_digest}
+
+  @doc """
+  Encode a 160-bit digest using base 32 to produce a 32 character
+  uppercase string for viewing on screen and printing.
+
+  Use `encode/1` for the value placed in the submission.
+
+  Returns `{:error, :invalid_digest}` if the input is not 20 bytes long.
+
+  ## Examples
+
+      iex> {:ok, digest} = IRmark.digest("1234567890abcdefghijklmnopqrstuvwxyz")
+      iex> IRmark.encode32(digest)
+      {:ok, "KRY5LZHJDUGA3BZETVMHHV74WWQUDJMC"}
+
+      iex> IRmark.encode32("not a digest")
+      {:error, :invalid_digest}
+  """
+  @spec encode32(digest :: binary()) :: {:ok, String.t()} | {:error, :invalid_digest}
+  def encode32(<<_::160>> = digest), do: {:ok, Base.encode32(digest)}
+  def encode32(_), do: {:error, :invalid_digest}
 end
