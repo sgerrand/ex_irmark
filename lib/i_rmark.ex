@@ -58,7 +58,7 @@ defmodule IRmark do
     {document, _rest} =
       xml
       |> String.replace_prefix("\uFEFF", "")
-      |> String.to_charlist()
+      |> :binary.bin_to_list()
       |> :xmerl_scan.string(quiet: true, namespace_conformant: true, document: true)
 
     {:ok, document}

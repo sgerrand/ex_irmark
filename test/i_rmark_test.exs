@@ -126,6 +126,12 @@ defmodule IRmarkTest do
       assert IRmark.c14n("<a><!-- note -->b</a>") == {:ok, "<a>b</a>"}
     end
 
+    test "keeps non-ASCII characters" do
+      source = ~s(<a b="é">Zoë £100 – 日本</a>)
+
+      assert IRmark.c14n(source) == {:ok, source}
+    end
+
     test "ignores a leading byte order mark" do
       assert IRmark.c14n("\uFEFF<a>b</a>") == {:ok, "<a>b</a>"}
     end
