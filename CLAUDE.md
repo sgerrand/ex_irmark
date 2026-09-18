@@ -46,7 +46,12 @@ Quirks to know before you change anything:
 
 ## Releases
 
-Releases are automated with release-please, run by `release-mate/action` in `.github/workflows/publish.yml`. Pushes to `main` open or update a release PR. Merging that PR tags the release, and the `publish` job then pushes the package and docs to Hex.
+Releases are automated in two workflows:
+
+- `.github/workflows/release.yml` runs release-please through `release-mate/action` on every push to `main`. It opens or updates a release PR. Merging that PR tags the release and publishes a GitHub Release.
+- `.github/workflows/publish.yml` runs when a GitHub Release is published. It checks out the tag and pushes the package and docs to Hex.
+
+The publish workflow only starts because release-mate creates the release with a GitHub App token. A release created with `GITHUB_TOKEN` does not trigger other workflows.
 
 - Commit messages must be Conventional Commits. release-please uses them for the version bump and the changelog.
 - Do not edit the version in `mix.exs` or `CHANGELOG.md` by hand. release-please owns both.
