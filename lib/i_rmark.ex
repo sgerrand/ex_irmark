@@ -4,7 +4,8 @@ defmodule IRmark do
   """
 
   @doc """
-  Canonicalise the XML document.
+  Canonicalise the XML document using exclusive XML canonicalisation,
+  leaving out comments.
 
   Returns `{:error, {:invalid_xml, reason}}` if the document cannot be
   parsed, or `{:error, {:failed_canonicalization, reason}}` if it cannot be
@@ -29,7 +30,7 @@ defmodule IRmark do
   end
 
   defp canonicalize(node) do
-    with {:ok, canonical} <- XmerlC14n.canonicalize(node) do
+    with {:ok, canonical} <- XmerlC14n.canonicalize(node, false) do
       {:ok, unescape_text_tabs(canonical)}
     end
   end

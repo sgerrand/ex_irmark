@@ -43,6 +43,10 @@ defmodule IRmarkTest do
                {:ok, ~s(<a b="x&#x9;y" c=">">\t</a>)}
     end
 
+    test "leaves out comments" do
+      assert IRmark.c14n("<a><!-- note -->b</a>") == {:ok, "<a>b</a>"}
+    end
+
     test "returns an error for malformed XML" do
       assert {:error, {:invalid_xml, _reason}} = IRmark.c14n("<a><b>")
     end
