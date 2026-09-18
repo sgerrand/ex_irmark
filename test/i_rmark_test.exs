@@ -56,4 +56,27 @@ defmodule IRmarkTest do
       assert IRmark.encode(<<0::168>>) == {:error, :invalid_digest}
     end
   end
+
+  describe "encode32/1" do
+    test "produces a 32 character uppercase string with no padding" do
+      {:ok, digest} = IRmark.digest("")
+
+      assert {:ok, encoded} = IRmark.encode32(digest)
+      assert String.length(encoded) == 32
+      assert encoded =~ ~r/\A[A-Z2-7]{32}\z/
+    end
+
+    test "encodes the same digest as encode/1" do
+      {:ok, digest} = IRmark.digest("")
+      {:ok, base64} = IRmark.encode(digest)
+      {:ok, base32} = IRmark.encode32(digest)
+
+      assert Base.decode64!(base64) == Base.decode32!(base32)
+    end
+
+    test "rejects input that is not 20 bytes long" do
+      assert IRmark.encode32(<<0::152>>) == {:error, :invalid_digest}
+      assert IRmark.encode32(<<0::168>>) == {:error, :invalid_digest}
+    end
+  end
 end
