@@ -38,7 +38,7 @@ All code is in `lib/i_rmark.ex`. `generate/1` runs the whole pipeline and return
 
 Quirks to know before you change anything:
 - The XML is parsed with `:xmerl_scan` in quiet mode, then the parsed tree goes to `XmerlC14n.canonicalize/2`. This is because malformed XML makes `:xmerl_scan` exit, and `XmerlC14n` does not catch that exit. Parse errors come back as `{:error, {:invalid_xml, reason}}`. A leading byte order mark is removed first, because `:xmerl_scan` rejects it.
-- `XmerlC14n` wrongly escapes tabs in text as `&#x9;`. `unescape_text_tabs/1` turns them back into literal tabs, but only outside tags, because tabs in attribute values must stay escaped.
+- `XmerlC14n` wrongly escapes tabs in text as `&#x9;`. `unescape_text_tabs/1` turns them back into literal tabs, but only outside tags, because tabs in attribute values must stay escaped. Remove this once [DoggettCK/xmerl_c14n#3](https://github.com/DoggettCK/xmerl_c14n/issues/3) is fixed and the dependency is updated.
 - `generate/1` only removes `<IRmark>` elements that are direct children of `<IRheader>`. Whitespace around the removed element stays, as it does in HMRC's code.
 - `encode/1` and `encode32/1` only accept a 20-byte digest. Any other input returns `{:error, :invalid_digest}`.
 - Doctests run via `doctest IRmark` in the test file, so `iex>` examples in `@doc` are real tests.
