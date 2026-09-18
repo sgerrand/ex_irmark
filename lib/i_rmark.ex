@@ -13,7 +13,7 @@ defmodule IRmark do
   @spec c14n(xml :: String.t()) :: {:ok, String.t()} | {:error, term()}
   def c14n(xml) when is_binary(xml) do
     with {:ok, document} <- parse(xml) do
-      XmerlC14n.canonicalize(document)
+      canonicalize(document)
     end
   end
 
@@ -26,6 +26,22 @@ defmodule IRmark do
     {:ok, document}
   catch
     :exit, {:fatal, reason} -> {:error, {:invalid_xml, reason}}
+  end
+
+  defp canonicalize(node) do
+    with {:ok, canonical} <- XmerlC14n.canonicalize(node) do
+      {:ok, unescape_text_tabs(canonical)}
+    end
+  end
+
+  # XmerlC14n escapes tabs in text as "&#x9;", but canonical XML keeps them
+  # as literal tabs. Tabs in attribute values must stay escaped, so skip
+  # over whole tags (attribute values are always double quoted).
+  defp unescape_text_tabs(canonical) do
+    Regex.replace(~r/<(?:[^>"]|"[^"]*")*>|&#x9;/, canonical, fn
+      "&#x9;" -> "\t"
+      tag -> tag
+    end)
   end
 
   @doc """

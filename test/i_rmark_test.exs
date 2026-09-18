@@ -34,6 +34,15 @@ defmodule IRmarkTest do
       assert IRmark.c14n(source) == {:ok, source}
     end
 
+    test "keeps tabs in text as literal tabs" do
+      assert IRmark.c14n("<a>\t<b>x\ty</b></a>") == {:ok, "<a>\t<b>x\ty</b></a>"}
+    end
+
+    test "keeps tabs in attribute values escaped" do
+      assert IRmark.c14n(~s(<a b="x&#9;y" c="&gt;">\t</a>)) ==
+               {:ok, ~s(<a b="x&#x9;y" c=">">\t</a>)}
+    end
+
     test "returns an error for malformed XML" do
       assert {:error, {:invalid_xml, _reason}} = IRmark.c14n("<a><b>")
     end
