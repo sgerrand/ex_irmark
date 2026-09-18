@@ -82,6 +82,135 @@ defmodule IRmark do
     end
   end
 
+  @doc """
+  Put an IRmark into a GovTalk submission.
+
+  Sets the `<IRmark Type="generic">` element in `<IRheader>` to `irmark`,
+  which must be the base 64 form from `generate/1`. An existing `<IRmark>`
+  element is replaced. Otherwise the element is added before `<Sender>`,
+  or at the end of `<IRheader>` if there is no `<Sender>`.
+
+  The rest of the document is left exactly as it was, byte for byte, so
+  the IRmark stays valid.
+
+  Returns:
+
+    * `{:ok, xml}` with the updated document
+    * `{:error, :invalid_irmark}` if `irmark` is not the base 64 form of a
+      160-bit digest
+    * `{:error, :irheader_not_found}` if the `<Body>` has no `<IRheader>`
+    * `{:error, :insert_failed}` if the updated document could not be
+      checked. This should not happen, and means the document has a layout
+      that `insert/2` does not support.
+    * the same errors as `generate/1`
+  """
+  @spec insert(xml :: String.t(), irmark :: String.t()) ::
+          {:ok, String.t()} | {:error, term()}
+  def insert(xml, irmark) when is_binary(xml) and is_binary(irmark) do
+    with :ok <- validate_irmark(irmark),
+         {:ok, before} <- generate(xml),
+         {:ok, updated} <- splice_irmark(xml, irmark),
+         :ok <- check_insert(updated, irmark, before) do
+      {:ok, updated}
+    end
+  end
+
+  defp validate_irmark(irmark) do
+    case Base.decode64(irmark) do
+      {:ok, <<_::160>>} -> :ok
+      _ -> {:error, :invalid_irmark}
+    end
+  end
+
+  @name_prefix "(?:([A-Za-z_][\\w.-]*):)?"
+
+  # Works on the original text rather than the parsed document, because
+  # writing the document back out from xmerl would change other bytes.
+  # check_insert/3 parses the result to make sure the edit was right.
+  # All positions are byte offsets, so the text is split with binary_part/3.
+  defp splice_irmark(xml, irmark) do
+    header = Regex.compile!("<#{@name_prefix}Body[\\s>].*?<#{@name_prefix}IRheader[\\s>]", "s")
+
+    case Regex.run(header, xml, return: :index) do
+      nil ->
+        {:error, :irheader_not_found}
+
+      [{start, length} | groups] ->
+        prefix = capture(xml, Enum.drop(groups, 1))
+        {before, rest} = split(xml, start + length)
+        {:ok, before <> splice_into_header(rest, prefix, irmark)}
+    end
+  end
+
+  defp splice_into_header(rest, prefix, irmark) do
+    close = Regex.compile!("</#{Regex.escape(qualify(prefix, "IRheader"))}\\s*>")
+
+    close_start =
+      case Regex.run(close, rest, return: :index) do
+        [{at, _length}] -> at
+        nil -> byte_size(rest)
+      end
+
+    {header, after_header} = split(rest, close_start)
+    splice_into_header_content(header, prefix, irmark) <> after_header
+  end
+
+  defp splice_into_header_content(header, prefix, irmark) do
+    existing =
+      Regex.compile!(
+        "<#{@name_prefix}IRmark(?:\\s[^>]*)?(?:/>|>.*?</(?:[A-Za-z_][\\w.-]*:)?IRmark\\s*>)",
+        "s"
+      )
+
+    sender = Regex.compile!("<#{Regex.escape(qualify(prefix, "Sender"))}[\\s/>]")
+
+    case Regex.run(existing, header, return: :index) do
+      [{at, length} | groups] ->
+        {before, rest} = split(header, at)
+        {_old, after_irmark} = split(rest, length)
+        before <> irmark_element(capture(header, groups), irmark) <> after_irmark
+
+      nil ->
+        element = irmark_element(prefix, irmark)
+
+        case Regex.run(sender, header, return: :index) do
+          [{at, _length}] ->
+            {before, rest} = split(header, at)
+            before <> element <> rest
+
+          nil ->
+            header <> element
+        end
+    end
+  end
+
+  defp split(binary, at) do
+    {binary_part(binary, 0, at), binary_part(binary, at, byte_size(binary) - at)}
+  end
+
+  # An optional group that did not match is either missing or {-1, 0}.
+  defp capture(string, [{at, length} | _]) when at >= 0, do: binary_part(string, at, length)
+  defp capture(_string, _groups), do: nil
+
+  defp qualify(nil, name), do: name
+  defp qualify(prefix, name), do: prefix <> ":" <> name
+
+  defp irmark_element(prefix, irmark) do
+    name = qualify(prefix, "IRmark")
+    ~s(<#{name} Type="generic">#{irmark}</#{name}>)
+  end
+
+  defp check_insert(updated, irmark, before) do
+    with {:ok, document} <- parse(updated),
+         {:ok, body} <- find_body(document),
+         {:ok, ^irmark} <- read_irmark(body),
+         {:ok, ^before} <- generate_for_body(body) do
+      :ok
+    else
+      _ -> {:error, :insert_failed}
+    end
+  end
+
   defp read_irmark(body) do
     with {:ok, header} <- find_descendant(body, "IRheader"),
          {:ok, irmark} <- find_child(header, "IRmark") do
