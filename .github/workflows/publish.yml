@@ -1,0 +1,54 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+
+    steps:
+    - name: Run release-please
+      id: release
+      uses: release-mate/action@ab5434d252b3c7e7fd57abe6a2e611f04c25213b # v1.2.0
+      with:
+        client-id: ${{ secrets.RELEASE_MATE_CLIENT_ID }}
+        app-private-key: ${{ secrets.RELEASE_MATE_PRIVATE_KEY }}
+
+  publish:
+    name: Publish to Hex
+    needs: release
+    if: ${{ needs.release.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: ${{ needs.release.outputs.tag_name }}
+        persist-credentials: false
+    - name: Set up Elixir
+      uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+      with:
+        elixir-version: '1.18'
+        otp-version: '27'
+    - name: Install dependencies
+      run: mix deps.get
+    - name: Publish package and docs
+      run: mix hex.publish --yes
+      env:
+        HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
