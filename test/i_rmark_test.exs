@@ -3,6 +3,85 @@ defmodule IRmarkTest do
 
   doctest IRmark
 
+  @hmrc_cis_return File.read!("test/fixtures/hmrc_cis_return.xml")
+
+  describe "generate/1" do
+    test "matches the IRmark HMRC's own implementation produces" do
+      assert IRmark.generate(@hmrc_cis_return) ==
+               {:ok,
+                %{
+                  base64: "tpwOaKfCHJDirqJn31ceHrX1XYc=",
+                  base32: "W2OA42FHYIOJBYVOUJT56VY6D227KXMH"
+                }}
+    end
+
+    test "ignores the value of an existing IRmark" do
+      changed =
+        String.replace(
+          @hmrc_cis_return,
+          "tpwOaKfCHJDirqJn31ceHrX1XYc=",
+          "AAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        )
+
+      assert IRmark.generate(changed) == IRmark.generate(@hmrc_cis_return)
+    end
+
+    test "gives the same result when the IRmark element is missing" do
+      without_irmark =
+        String.replace(
+          @hmrc_cis_return,
+          ~r/<IRmark Type="generic">[^<]*<\/IRmark>/,
+          ""
+        )
+
+      refute without_irmark == @hmrc_cis_return
+      assert IRmark.generate(without_irmark) == IRmark.generate(@hmrc_cis_return)
+    end
+
+    test "only hashes the Body" do
+      changed =
+        String.replace(@hmrc_cis_return, "<Class>IR-CIS-CIS300MR</Class>", "<Class>X</Class>")
+
+      assert IRmark.generate(changed) == IRmark.generate(@hmrc_cis_return)
+    end
+
+    test "changes when the Body changes" do
+      changed =
+        String.replace(
+          @hmrc_cis_return,
+          "<NilReturn>yes</NilReturn>",
+          "<NilReturn>no</NilReturn>"
+        )
+
+      refute IRmark.generate(changed) == IRmark.generate(@hmrc_cis_return)
+    end
+
+    test "only removes IRmark elements inside IRheader" do
+      changed = String.replace(@hmrc_cis_return, "<NilReturn>", "<IRmark/><NilReturn>")
+
+      refute IRmark.generate(changed) == IRmark.generate(@hmrc_cis_return)
+    end
+
+    test "uses namespaces declared outside the Body" do
+      inherited =
+        ~s(<GovTalkMessage xmlns="urn:envelope" xmlns:x="urn:x"><Body><x:a>1</x:a></Body></GovTalkMessage>)
+
+      local =
+        ~s(<GovTalkMessage xmlns="urn:envelope"><Body><x:a xmlns:x="urn:x">1</x:a></Body></GovTalkMessage>)
+
+      assert IRmark.generate(inherited) == IRmark.generate(local)
+    end
+
+    test "returns an error when there is no Body" do
+      assert IRmark.generate(~s(<GovTalkMessage><Header/></GovTalkMessage>)) ==
+               {:error, :body_not_found}
+    end
+
+    test "returns an error for malformed XML" do
+      assert {:error, {:invalid_xml, _reason}} = IRmark.generate("<GovTalkMessage>")
+    end
+  end
+
   describe "c14n/1" do
     test "transforms XML document into canonical format" do
       source =
