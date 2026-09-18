@@ -14,6 +14,11 @@ defmodule IRmark do
     Record.extract(:xmlElement, from_lib: "xmerl/include/xmerl.hrl")
   )
 
+  Record.defrecordp(
+    :xmlText,
+    Record.extract(:xmlText, from_lib: "xmerl/include/xmerl.hrl")
+  )
+
   @doc """
   Generate the IRmark for a GovTalk submission.
 
@@ -30,13 +35,87 @@ defmodule IRmark do
           {:ok, %{base64: String.t(), base32: String.t()}} | {:error, term()}
   def generate(xml) when is_binary(xml) do
     with {:ok, document} <- parse(xml),
-         {:ok, body} <- find_body(document),
-         {:ok, canonical} <- canonicalize(remove_irmark(body)),
+         {:ok, body} <- find_body(document) do
+      generate_for_body(body)
+    end
+  end
+
+  defp generate_for_body(body) do
+    with {:ok, canonical} <- canonicalize(remove_irmark(body)),
          {:ok, digest} <- digest(canonical),
          {:ok, base64} <- encode(digest),
          {:ok, base32} <- encode32(digest) do
       {:ok, %{base64: base64, base32: base32}}
     end
+  end
+
+  @doc """
+  Check the IRmark in a GovTalk submission.
+
+  Reads the `<IRmark>` element from `<IRheader>` and compares its value with
+  the IRmark calculated by `generate/1`. The values must match exactly.
+
+  Returns:
+
+    * `:ok` if the IRmark is correct
+    * `{:error, :irmark_not_found}` if there is no `<IRmark>` in
+      `<IRheader>`. HMRC rejects this with error 2022.
+    * `{:error, {:irmark_mismatch, %{expected: expected, actual: actual}}}`
+      if the IRmark is wrong. HMRC rejects this with error 2021.
+    * the same errors as `generate/1`
+  """
+  @spec verify(xml :: String.t()) ::
+          :ok
+          | {:error, :irmark_not_found}
+          | {:error, {:irmark_mismatch, %{expected: String.t(), actual: String.t()}}}
+          | {:error, term()}
+  def verify(xml) when is_binary(xml) do
+    with {:ok, document} <- parse(xml),
+         {:ok, body} <- find_body(document),
+         {:ok, actual} <- read_irmark(body),
+         {:ok, %{base64: expected}} <- generate_for_body(body) do
+      if actual == expected do
+        :ok
+      else
+        {:error, {:irmark_mismatch, %{expected: expected, actual: actual}}}
+      end
+    end
+  end
+
+  defp read_irmark(body) do
+    with {:ok, header} <- find_descendant(body, "IRheader"),
+         {:ok, irmark} <- find_child(header, "IRmark") do
+      {:ok, text_content(irmark)}
+    else
+      :error -> {:error, :irmark_not_found}
+    end
+  end
+
+  defp find_child(element, local_name) do
+    case element |> xmlElement(:content) |> Enum.find(&element?(&1, local_name)) do
+      nil -> :error
+      child -> {:ok, child}
+    end
+  end
+
+  defp find_descendant(element, local_name) do
+    element
+    |> xmlElement(:content)
+    |> Enum.filter(&Record.is_record(&1, :xmlElement))
+    |> Enum.find_value(:error, fn child ->
+      if element?(child, local_name) do
+        {:ok, child}
+      else
+        with :error <- find_descendant(child, local_name), do: nil
+      end
+    end)
+  end
+
+  defp text_content(element) do
+    element
+    |> xmlElement(:content)
+    |> Enum.filter(&Record.is_record(&1, :xmlText))
+    |> Enum.map_join(&to_string(xmlText(&1, :value)))
   end
 
   @doc """

@@ -82,6 +82,60 @@ defmodule IRmarkTest do
     end
   end
 
+  @hmrc_irmark "tpwOaKfCHJDirqJn31ceHrX1XYc="
+
+  defp envelope(header) do
+    ~s(<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope"><Header/><Body>) <>
+      ~s(<IRenvelope xmlns="urn:ir"><IRheader>#{header}</IRheader><Data>1</Data></IRenvelope>) <>
+      ~s(</Body></GovTalkMessage>)
+  end
+
+  describe "verify/1" do
+    test "accepts HMRC's test vector" do
+      assert IRmark.verify(@hmrc_cis_return) == :ok
+    end
+
+    test "reports a wrong IRmark" do
+      wrong = String.replace(@hmrc_cis_return, @hmrc_irmark, "AAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+
+      assert IRmark.verify(wrong) ==
+               {:error,
+                {:irmark_mismatch,
+                 %{expected: @hmrc_irmark, actual: "AAAAAAAAAAAAAAAAAAAAAAAAAAA="}}}
+    end
+
+    test "reports a changed Body" do
+      changed =
+        String.replace(
+          @hmrc_cis_return,
+          "<NilReturn>yes</NilReturn>",
+          "<NilReturn>no</NilReturn>"
+        )
+
+      assert {:error, {:irmark_mismatch, %{actual: @hmrc_irmark}}} = IRmark.verify(changed)
+    end
+
+    test "does not trim the IRmark value" do
+      padded = String.replace(@hmrc_cis_return, @hmrc_irmark, " #{@hmrc_irmark} ")
+
+      assert {:error, {:irmark_mismatch, %{actual: " " <> _}}} = IRmark.verify(padded)
+    end
+
+    test "reports a missing IRmark" do
+      assert IRmark.verify(envelope("<Sender>Company</Sender>")) == {:error, :irmark_not_found}
+    end
+
+    test "reports an empty IRmark as a mismatch" do
+      assert {:error, {:irmark_mismatch, %{actual: ""}}} =
+               IRmark.verify(envelope(~s(<IRmark Type="generic"/>)))
+    end
+
+    test "returns errors from generate/1" do
+      assert IRmark.verify(~s(<GovTalkMessage/>)) == {:error, :body_not_found}
+      assert {:error, {:invalid_xml, _}} = IRmark.verify("<GovTalkMessage>")
+    end
+  end
+
   describe "c14n/1" do
     test "transforms XML document into canonical format" do
       source =
