@@ -47,6 +47,10 @@ defmodule IRmarkTest do
       assert IRmark.c14n("<a><!-- note -->b</a>") == {:ok, "<a>b</a>"}
     end
 
+    test "ignores a leading byte order mark" do
+      assert IRmark.c14n("\uFEFF<a>b</a>") == {:ok, "<a>b</a>"}
+    end
+
     test "returns an error for malformed XML" do
       assert {:error, {:invalid_xml, _reason}} = IRmark.c14n("<a><b>")
     end

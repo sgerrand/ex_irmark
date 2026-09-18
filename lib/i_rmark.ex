@@ -21,6 +21,7 @@ defmodule IRmark do
   defp parse(xml) do
     {document, _rest} =
       xml
+      |> String.replace_prefix("\uFEFF", "")
       |> String.to_charlist()
       |> :xmerl_scan.string(quiet: true, namespace_conformant: true, document: true)
 
