@@ -14,6 +14,8 @@ mix compile --warnings-as-errors
 mix test --warnings-as-errors                 # CI runs with this flag
 mix test test/i_rmark_test.exs:7              # single test by line
 mix format --check-formatted                  # CI lint step
+mix docs                                      # needs Elixir 1.15+ (ex_doc)
+mix hex.build                                 # check package contents
 ```
 
 The CI matrix covers Elixir 1.16–1.20 and OTP 24–29 (see `.github/workflows/ci.yml`). Do not use language features newer than Elixir 1.16.
