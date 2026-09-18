@@ -5,16 +5,28 @@ defmodule IRmark do
 
   @doc """
   Canonicalise the XML document.
+
+  Returns `{:error, {:invalid_xml, reason}}` if the document cannot be
+  parsed, or `{:error, {:failed_canonicalization, reason}}` if it cannot be
+  canonicalised.
   """
-  @spec c14n(xml :: String.t()) :: {:ok, binary()}
+  @spec c14n(xml :: String.t()) :: {:ok, String.t()} | {:error, term()}
   def c14n(xml) when is_binary(xml) do
-    case result =
-           xml
-           |> XmerlC14n.canonicalize!()
-           |> String.replace(~r/>\s+</, "><") do
-      nil -> :error
-      _ -> {:ok, result}
+    with {:ok, document} <- parse(xml),
+         {:ok, canonical} <- XmerlC14n.canonicalize(document) do
+      {:ok, String.replace(canonical, ~r/>\s+</, "><")}
     end
+  end
+
+  defp parse(xml) do
+    {document, _rest} =
+      xml
+      |> String.to_charlist()
+      |> :xmerl_scan.string(quiet: true, namespace_conformant: true, document: true)
+
+    {:ok, document}
+  catch
+    :exit, {:fatal, reason} -> {:error, {:invalid_xml, reason}}
   end
 
   @doc """

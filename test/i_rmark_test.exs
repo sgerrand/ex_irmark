@@ -29,5 +29,17 @@ defmodule IRmarkTest do
 
       assert IRmark.c14n(source) == {:ok, expected}
     end
+
+    test "returns an error for malformed XML" do
+      assert {:error, {:invalid_xml, _reason}} = IRmark.c14n("<a><b>")
+    end
+
+    test "returns an error for non-XML input" do
+      assert {:error, {:invalid_xml, _reason}} = IRmark.c14n("not xml")
+    end
+
+    test "returns an error for an undeclared namespace prefix" do
+      assert {:error, {:invalid_xml, _reason}} = IRmark.c14n(~s(<a x:y="1"/>))
+    end
   end
 end
