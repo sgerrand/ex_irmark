@@ -3,31 +3,131 @@ defmodule IRmarkTest do
 
   doctest IRmark
 
+  @hmrc_cis_return File.read!("test/fixtures/hmrc_cis_return.xml")
+
+  describe "generate/1" do
+    test "matches the IRmark HMRC's own implementation produces" do
+      assert IRmark.generate(@hmrc_cis_return) ==
+               {:ok,
+                %{
+                  base64: "tpwOaKfCHJDirqJn31ceHrX1XYc=",
+                  base32: "W2OA42FHYIOJBYVOUJT56VY6D227KXMH"
+                }}
+    end
+
+    test "ignores the value of an existing IRmark" do
+      changed =
+        String.replace(
+          @hmrc_cis_return,
+          "tpwOaKfCHJDirqJn31ceHrX1XYc=",
+          "AAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        )
+
+      assert IRmark.generate(changed) == IRmark.generate(@hmrc_cis_return)
+    end
+
+    test "gives the same result when the IRmark element is missing" do
+      without_irmark =
+        String.replace(
+          @hmrc_cis_return,
+          ~r/<IRmark Type="generic">[^<]*<\/IRmark>/,
+          ""
+        )
+
+      refute without_irmark == @hmrc_cis_return
+      assert IRmark.generate(without_irmark) == IRmark.generate(@hmrc_cis_return)
+    end
+
+    test "only hashes the Body" do
+      changed =
+        String.replace(@hmrc_cis_return, "<Class>IR-CIS-CIS300MR</Class>", "<Class>X</Class>")
+
+      assert IRmark.generate(changed) == IRmark.generate(@hmrc_cis_return)
+    end
+
+    test "changes when the Body changes" do
+      changed =
+        String.replace(
+          @hmrc_cis_return,
+          "<NilReturn>yes</NilReturn>",
+          "<NilReturn>no</NilReturn>"
+        )
+
+      refute IRmark.generate(changed) == IRmark.generate(@hmrc_cis_return)
+    end
+
+    test "only removes IRmark elements inside IRheader" do
+      changed = String.replace(@hmrc_cis_return, "<NilReturn>", "<IRmark/><NilReturn>")
+
+      refute IRmark.generate(changed) == IRmark.generate(@hmrc_cis_return)
+    end
+
+    test "uses namespaces declared outside the Body" do
+      inherited =
+        ~s(<GovTalkMessage xmlns="urn:envelope" xmlns:x="urn:x"><Body><x:a>1</x:a></Body></GovTalkMessage>)
+
+      local =
+        ~s(<GovTalkMessage xmlns="urn:envelope"><Body><x:a xmlns:x="urn:x">1</x:a></Body></GovTalkMessage>)
+
+      assert IRmark.generate(inherited) == IRmark.generate(local)
+    end
+
+    test "returns an error when there is no Body" do
+      assert IRmark.generate(~s(<GovTalkMessage><Header/></GovTalkMessage>)) ==
+               {:error, :body_not_found}
+    end
+
+    test "returns an error for malformed XML" do
+      assert {:error, {:invalid_xml, _reason}} = IRmark.generate("<GovTalkMessage>")
+    end
+  end
+
   describe "c14n/1" do
-    test "transforms XML document into canonical format and removes whitespace" do
-      source = ~s(<!DOCTYPE doc [<!ATTLIST e9 attr CDATA "default">]>
-          <doc>
-          <e1   />
-          <e2   ></e2>
-          <e3   name = "elem3"   id="elem3"   />
-          <e4   name="elem4"   id="elem4"   ></e4>
-          <e5 a:attr="out" b:attr="sorted" attr2="all" attr="I'm"
+    test "transforms XML document into canonical format" do
+      source =
+        ~s(<!DOCTYPE doc [<!ATTLIST e9 attr CDATA "default">]>) <>
+          ~s(<doc>) <>
+          ~s(<e1   />) <>
+          ~s(<e2   ></e2>) <>
+          ~s(<e3   name = "elem3"   id="elem3"   />) <>
+          ~s(<e4   name="elem4"   id="elem4"   ></e4>) <>
+          ~s(<e5 a:attr="out" b:attr="sorted" attr2="all" attr="I'm"
             xmlns:b="http://www.ietf.org"
             xmlns:a="http://www.w3.org"
-            xmlns="http://example.org"/>
-          <e6 xmlns="" xmlns:a="http://www.w3.org">
-            <e7 xmlns="http://www.ietf.org">
-              <e8 xmlns="" xmlns:a="http://www.w3.org">
-                <e9 xmlns="" xmlns:a="http://www.ietf.org"/>
-              </e8>
-            </e7>
-          </e6>
-          </doc>)
+            xmlns="http://example.org"/>) <>
+          ~s(<e6 xmlns="" xmlns:a="http://www.w3.org">) <>
+          ~s(<e7 xmlns="http://www.ietf.org">) <>
+          ~s(<e8 xmlns="" xmlns:a="http://www.w3.org">) <>
+          ~s(<e9 xmlns="" xmlns:a="http://www.ietf.org"/>) <>
+          ~s(</e8></e7></e6></doc>)
 
       expected =
         ~s(<doc><e1></e1><e2></e2><e3 id="elem3" name="elem3"></e3><e4 id="elem4" name="elem4"></e4><e5 xmlns="http://example.org" xmlns:a="http://www.w3.org" xmlns:b="http://www.ietf.org" attr="I'm" attr2="all" b:attr="sorted" a:attr="out"></e5><e6><e7 xmlns="http://www.ietf.org"><e8 xmlns=""><e9></e9></e8></e7></e6></doc>)
 
       assert IRmark.c14n(source) == {:ok, expected}
+    end
+
+    test "keeps whitespace between elements" do
+      source = "<a>\n  <b> </b>\n</a>"
+
+      assert IRmark.c14n(source) == {:ok, source}
+    end
+
+    test "keeps tabs in text as literal tabs" do
+      assert IRmark.c14n("<a>\t<b>x\ty</b></a>") == {:ok, "<a>\t<b>x\ty</b></a>"}
+    end
+
+    test "keeps tabs in attribute values escaped" do
+      assert IRmark.c14n(~s(<a b="x&#9;y" c="&gt;">\t</a>)) ==
+               {:ok, ~s(<a b="x&#x9;y" c=">">\t</a>)}
+    end
+
+    test "leaves out comments" do
+      assert IRmark.c14n("<a><!-- note -->b</a>") == {:ok, "<a>b</a>"}
+    end
+
+    test "ignores a leading byte order mark" do
+      assert IRmark.c14n("\uFEFF<a>b</a>") == {:ok, "<a>b</a>"}
     end
 
     test "returns an error for malformed XML" do
