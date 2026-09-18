@@ -12,9 +12,8 @@ defmodule IRmark do
   """
   @spec c14n(xml :: String.t()) :: {:ok, String.t()} | {:error, term()}
   def c14n(xml) when is_binary(xml) do
-    with {:ok, document} <- parse(xml),
-         {:ok, canonical} <- XmerlC14n.canonicalize(document) do
-      {:ok, String.replace(canonical, ~r/>\s+</, "><")}
+    with {:ok, document} <- parse(xml) do
+      XmerlC14n.canonicalize(document)
     end
   end
 
