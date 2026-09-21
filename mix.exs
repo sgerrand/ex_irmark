@@ -5,7 +5,7 @@ defmodule IRmark.MixProject do
     [
       app: :irmark,
       version: "0.0.0-dev",
-      elixir: "~> 1.14",
+      elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]

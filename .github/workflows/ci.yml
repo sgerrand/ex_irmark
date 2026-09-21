@@ -9,6 +9,21 @@ on:
 permissions: {}
 
 jobs:
+  required:
+    name: Required
+    if: always()
+    needs:
+      - test
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Fail if any required job did not succeed
+        if: >-
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled') ||
+          contains(needs.*.result, 'skipped')
+        run: exit 1
+
   test:
     name: Tests [Elixir ${{ matrix.elixir }}, OTP ${{ matrix.otp }}]
     runs-on: ubuntu-latest
@@ -16,22 +31,37 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        elixir: ['1.14', '1.15', '1.16', '1.17', '1.18']
-        otp: ['24', '25', '26', '27']
-        exclude:
-          - elixir: '1.14'
-            otp: '27'
-          - elixir: '1.15'
-            otp: '27'
-          - elixir: '1.16'
-            otp: '27'
-          - elixir: '1.17'
-            otp: '24'
-          - elixir: '1.18'
-            otp: '24'
         include:
+          - elixir: '1.16'
+            otp: '24'
+          - elixir: '1.16'
+            otp: '25'
+          - elixir: '1.16'
+            otp: '26'
+          - elixir: '1.17'
+            otp: '25'
+          - elixir: '1.17'
+            otp: '26'
+          - elixir: '1.17'
+            otp: '27'
+          - elixir: '1.18'
+            otp: '25'
+          - elixir: '1.18'
+            otp: '26'
           - elixir: '1.18'
             otp: '27'
+          - elixir: '1.19'
+            otp: '26'
+          - elixir: '1.19'
+            otp: '27'
+          - elixir: '1.19'
+            otp: '28'
+          - elixir: '1.20'
+            otp: '27'
+          - elixir: '1.20'
+            otp: '28'
+          - elixir: '1.20'
+            otp: '29'
             lint: true
 
     env:

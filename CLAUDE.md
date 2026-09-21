@@ -16,7 +16,7 @@ mix test test/i_rmark_test.exs:7              # single test by line
 mix format --check-formatted                  # CI lint step
 ```
 
-The CI matrix covers Elixir 1.14–1.18 and OTP 24–27 (see `.github/workflows/ci.yml`). Do not use language features newer than Elixir 1.14.
+The CI matrix covers Elixir 1.16–1.20 and OTP 24–29 (see `.github/workflows/ci.yml`). Do not use language features newer than Elixir 1.16.
 
 ## How the IRmark is built
 
