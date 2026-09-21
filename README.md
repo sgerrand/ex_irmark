@@ -38,8 +38,11 @@ case IRmark.verify(xml) do
   :ok -> :ready_to_send
   {:error, :irmark_not_found} -> :missing
   {:error, {:irmark_mismatch, %{expected: expected, actual: actual}}} -> :wrong
+  {:error, reason} -> {:could_not_check, reason}
 end
 ```
+
+The last clause catches the rest: `:body_not_found` when the document has no `<Body>`, and `{:invalid_xml, reason}` when it cannot be parsed.
 
 `insert/2` changes nothing else in the document. Any change to the `<Body>` after you insert the IRmark, including whitespace, makes the IRmark wrong.
 
