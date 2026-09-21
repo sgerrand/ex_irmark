@@ -93,3 +93,32 @@ jobs:
       run: mix compile --warnings-as-errors
     - name: Run tests
       run: mix test --warnings-as-errors
+
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+
+    env:
+      MIX_ENV: dev
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - name: Set up Elixir
+      uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+      with:
+        elixir-version: '1.18'
+        otp-version: '27'
+    - name: Cache dependencies
+      id: cache-deps
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          _build
+          deps
+        key: ${{ runner.os }}-${{ env.MIX_ENV }}-27-1.18-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-${{ env.MIX_ENV }}-27-1.18-
+    - name: Install and compile dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: mix do deps.get, deps.compile
+    - name: Build documentation
+      run: mix docs --warnings-as-errors
