@@ -15,6 +15,7 @@ mix test --warnings-as-errors                 # CI runs with this flag
 mix test test/i_rmark_test.exs:7              # single test by line
 mix format --check-formatted                  # CI lint step
 mix docs --warnings-as-errors                 # CI docs job
+mix dialyzer                                  # CI dialyzer job (PLT in priv/plts)
 mix hex.build                                 # check package contents
 ```
 
