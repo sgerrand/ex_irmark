@@ -42,7 +42,7 @@ case IRmark.verify(xml) do
 end
 ```
 
-The last clause catches the rest: `:body_not_found` when the document has no `<Body>`, and `{:invalid_xml, reason}` when it cannot be parsed.
+The last clause catches the rest: `:body_not_found` when the document has no `<Body>`, `{:invalid_xml, reason}` when it cannot be parsed, and `{:failed_canonicalization, reason}` when it cannot be canonicalised.
 
 `insert/2` changes nothing else in the document. Any change to the `<Body>` after you insert the IRmark, including whitespace, makes the IRmark wrong.
 
