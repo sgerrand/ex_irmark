@@ -35,7 +35,9 @@ jobs:
       env:
         TAG_NAME: ${{ github.event.release.tag_name }}
       run: |
-        version="$(mix run --no-start -e 'IO.puts(Mix.Project.config()[:version])')"
+        # Without these flags mix compiles first and prints its progress on
+        # stdout, so the compiler output ends up in $version.
+        version="$(mix run --no-start --no-compile --no-deps-check -e 'IO.puts(Mix.Project.config()[:version])')"
         if [ "$TAG_NAME" != "v$version" ]; then
           echo "Release tag $TAG_NAME does not match mix.exs version $version" >&2
           exit 1
