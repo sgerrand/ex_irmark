@@ -37,8 +37,11 @@ defmodule IRmark.MixProject do
   defp package do
     [
       licenses: ["BSD-2-Clause"],
-      links: %{"GitHub" => @source_url},
-      files: ~w(lib mix.exs README.md LICENSE)
+      links: %{
+        "GitHub" => @source_url,
+        "Changelog" => "#{@source_url}/blob/main/CHANGELOG.md"
+      },
+      files: ~w(lib mix.exs README.md LICENSE CHANGELOG.md)
     ]
   end
 
