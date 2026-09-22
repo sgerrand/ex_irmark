@@ -15,7 +15,8 @@ defmodule IRmark.MixProject do
       package: package(),
       name: "IRmark",
       source_url: @source_url,
-      docs: docs()
+      docs: docs(),
+      dialyzer: dialyzer()
     ]
   end
 
@@ -30,7 +31,16 @@ defmodule IRmark.MixProject do
   defp deps do
     [
       {:xmerl_c14n, "~> 0.2.0"},
+      {:dialyxir, "~> 1.4", only: :dev, runtime: false},
       {:ex_doc, "~> 0.40", only: :dev, runtime: false}
+    ]
+  end
+
+  defp dialyzer do
+    [
+      plt_local_path: "priv/plts",
+      plt_core_path: "priv/plts",
+      plt_add_apps: [:mix]
     ]
   end
 
