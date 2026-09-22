@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file. See [Keep a
 CHANGELOG](http://keepachangelog.com/) for how to update this file. This project
 adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.1.1](https://github.com/sgerrand/ex_irmark/compare/v0.1.0...v0.1.1) (2026-09-22)
+
+
+### Bug Fixes
+
+* **ci:** read mix.exs version without compiler output ([#22](https://github.com/sgerrand/ex_irmark/issues/22)) ([56cb9c6](https://github.com/sgerrand/ex_irmark/commit/56cb9c6cd9b9a87e45905996ae05b5eb2cde21e1))
+
 ## 0.1.0 (2026-09-22)
 
 
