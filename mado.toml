@@ -1,0 +1,14 @@
+# Markdown lint rules. Run with `mado check .`.
+
+[lint]
+# release-please owns this file.
+exclude = ["CHANGELOG.md"]
+
+# Off: prose here is wrapped for reading, not to a fixed column. mado has no
+# switch to turn a rule off, so the limit is set past any line we would write.
+[lint.md013]
+line-length = 1000
+
+# Number ordered lists 1, 2, 3 rather than 1, 1, 1.
+[lint.md029]
+style = "ordered"
