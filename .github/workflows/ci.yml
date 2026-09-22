@@ -15,6 +15,7 @@ jobs:
     needs:
       - dialyzer
       - docs
+      - markdown
       - test
     runs-on: ubuntu-latest
     permissions: {}
@@ -163,3 +164,12 @@ jobs:
       run: mix do deps.get, deps.compile
     - name: Build documentation
       run: mix docs --warnings-as-errors
+
+  markdown:
+    name: Markdown
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - name: Lint Markdown
+      uses: akiomik/mado@6642676268ddaad6187482ef57d95e218c6b865c # v0.3.2
