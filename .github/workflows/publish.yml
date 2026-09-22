@@ -31,6 +31,15 @@ jobs:
         version-type: strict
     - name: Install dependencies
       run: mix deps.get
+    - name: Check the tag matches the version in mix.exs
+      env:
+        TAG_NAME: ${{ github.event.release.tag_name }}
+      run: |
+        version="$(mix run --no-start -e 'IO.puts(Mix.Project.config()[:version])')"
+        if [ "$TAG_NAME" != "v$version" ]; then
+          echo "Release tag $TAG_NAME does not match mix.exs version $version" >&2
+          exit 1
+        fi
     - name: Publish package and documentation
       run: mix hex.publish --yes
       env:
