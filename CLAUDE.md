@@ -45,3 +45,17 @@ Quirks to know before you change anything:
 - `encode/1` and `encode32/1` only accept a 20-byte digest. Any other input returns `{:error, :invalid_digest}`.
 - `insert/2` edits the original text with regexes, not the parsed tree, because writing the tree back out would change other bytes and so the IRmark. Regex positions are byte offsets, so split with `binary_part/3`, never `String.split_at/2`. It adds no whitespace, because whitespace is part of the hash. After editing, it parses the result and checks the `<Body>` hash is unchanged and the new value reads back. If that check fails it returns `{:error, :insert_failed}`.
 - Doctests run via `doctest IRmark` in the test file, so `iex>` examples in `@doc` are real tests.
+
+## Releases
+
+Releases are automated in two workflows:
+
+- `.github/workflows/release.yml` runs release-please through `release-mate/action` on every push to `main`. It opens or updates a release PR. Merging that PR tags the release and publishes a GitHub Release.
+- `.github/workflows/publish.yml` runs when a GitHub Release is published. It checks out the tag and pushes the package and docs to Hex.
+
+The publish workflow only starts because release-mate creates the release with a GitHub App token. A release created with `GITHUB_TOKEN` does not trigger other workflows.
+
+- Commit messages must be Conventional Commits. release-please uses them for the version bump and the changelog.
+- Do not edit the version in `mix.exs`, the install version in `README.md` (between the `x-release-please-start-version` and `x-release-please-end` markers), or `CHANGELOG.md` by hand. release-please owns all three.
+- `release-please-config.json` sets `initial-version` to `0.1.0`. Without it the first release would be `1.0.0`. It also sets `bump-minor-pre-major` and `bump-patch-for-minor-pre-major`, so before 1.0 a breaking change bumps the minor and a feature bumps the patch.
+- Secrets needed: `RELEASE_MATE_CLIENT_ID`, `RELEASE_MATE_PRIVATE_KEY` and `HEX_API_KEY`.
