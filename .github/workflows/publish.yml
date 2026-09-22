@@ -14,6 +14,7 @@ concurrency:
 jobs:
   publish:
     name: Publish to Hex
+    if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
