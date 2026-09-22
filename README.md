@@ -13,7 +13,7 @@ Add `irmark` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:irmark, "~> 0.0.0-dev"}
+    {:irmark, "~> 0.1.0"}
   ]
 end
 ```
