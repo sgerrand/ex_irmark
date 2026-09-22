@@ -29,9 +29,3 @@ adheres to [Semantic Versioning](http://semver.org/).
 * **digest:** correct digest typespec to 160 bits ([996b391](https://github.com/sgerrand/ex_irmark/commit/996b39103fcbd64a6965747b87278aed9934a830))
 * **encode:** stop truncating base64 output ([b9c8b61](https://github.com/sgerrand/ex_irmark/commit/b9c8b61c73eaf9051d98cc1a12e30e7c6182833b))
 * stop truncating encode output and return c14n errors ([ea75329](https://github.com/sgerrand/ex_irmark/commit/ea75329cd8d8d1de8092b70950fe226e49cc27c6))
-
-## [Unreleased]
-
-Nothing released yet. release-please adds each release above this section,
-because it needs a version heading to insert before. Delete this section once
-the first release lands.
