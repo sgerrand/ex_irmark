@@ -40,6 +40,7 @@ All code is in `lib/i_rmark.ex`. `generate/1` runs the whole pipeline and return
 `test/fixtures/hmrc_cis_return.xml` is HMRC's own test vector (Apache-2.0). Any change to parsing or canonicalisation must keep it passing.
 
 Quirks to know before you change anything:
+
 - The XML is parsed with `:xmerl_scan` in quiet mode, then the parsed tree goes to `XmerlC14n.canonicalize/2`. This is because malformed XML makes `:xmerl_scan` exit, and `XmerlC14n` does not catch that exit. Parse errors come back as `{:error, {:invalid_xml, reason}}`. A leading byte order mark is removed first, because `:xmerl_scan` rejects it. The XML is passed to `:xmerl_scan.string/2` as UTF-8 bytes (`:binary.bin_to_list/1`), not characters, because it decodes UTF-8 itself. Passing characters breaks on any non-ASCII text.
 - `XmerlC14n` wrongly escapes tabs in text as `&#x9;`. `unescape_text_tabs/1` turns them back into literal tabs, but only outside tags, because tabs in attribute values must stay escaped. Remove this once [DoggettCK/xmerl_c14n#3](https://github.com/DoggettCK/xmerl_c14n/issues/3) is fixed and the dependency is updated.
 - `generate/1` only removes `<IRmark>` elements that are direct children of `<IRheader>`. Whitespace around the removed element stays, as it does in HMRC's code.
