@@ -13,6 +13,7 @@ jobs:
     name: Required
     if: always()
     needs:
+      - docs
       - test
     runs-on: ubuntu-latest
     permissions: {}
