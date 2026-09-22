@@ -56,6 +56,6 @@ Releases are automated in two workflows:
 The publish workflow only starts because release-mate creates the release with a GitHub App token. A release created with `GITHUB_TOKEN` does not trigger other workflows.
 
 - Commit messages must be Conventional Commits. release-please uses them for the version bump and the changelog.
-- Do not edit the version in `mix.exs` or `CHANGELOG.md` by hand. release-please owns both.
-- `release-please-config.json` sets `initial-version` to `0.1.0`. Without it the first release would be `1.0.0`.
+- Do not edit the version in `mix.exs`, the install version in `README.md` (between the `x-release-please-start-version` and `x-release-please-end` markers), or `CHANGELOG.md` by hand. release-please owns all three.
+- `release-please-config.json` sets `initial-version` to `0.1.0`. Without it the first release would be `1.0.0`. It also sets `bump-minor-pre-major` and `bump-patch-for-minor-pre-major`, so before 1.0 a breaking change bumps the minor and a feature bumps the patch.
 - Secrets needed: `RELEASE_MATE_CLIENT_ID`, `RELEASE_MATE_PRIVATE_KEY` and `HEX_API_KEY`.
