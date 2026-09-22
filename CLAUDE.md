@@ -14,7 +14,7 @@ mix compile --warnings-as-errors
 mix test --warnings-as-errors                 # CI runs with this flag
 mix test test/i_rmark_test.exs:7              # single test by line
 mix format --check-formatted                  # CI lint step
-mix docs                                      # needs Elixir 1.15+ (ex_doc)
+mix docs --warnings-as-errors                 # CI docs job
 mix hex.build                                 # check package contents
 ```
 
