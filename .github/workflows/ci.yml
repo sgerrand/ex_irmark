@@ -15,6 +15,7 @@ jobs:
     needs:
       - dialyzer
       - docs
+      - lint
       - markdown
       - test
     runs-on: ubuntu-latest
@@ -65,7 +66,6 @@ jobs:
             otp: '28'
           - elixir: '1.20'
             otp: '29'
-            lint: true
 
     env:
       MIX_ENV: test
@@ -89,9 +89,6 @@ jobs:
     - name: Install and compile dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: mix do deps.get --only test, deps.compile
-    - name: Check code format
-      run: mix format --check-formatted
-      if: ${{ matrix.lint }}
     - name: Compile code
       run: mix compile --warnings-as-errors
     - name: Run tests
@@ -164,6 +161,26 @@ jobs:
       run: mix do deps.get, deps.compile
     - name: Build documentation
       run: mix docs --warnings-as-errors
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - name: Set up Elixir
+      uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+      with:
+        version-file: .tool-versions
+        version-type: strict
+    - name: Check that mix.lock is up to date
+      run: mix deps.get --check-locked
+    - name: Check for unused dependencies
+      run: mix deps.unlock --check-unused
+    - name: Check code format
+      run: mix format --check-formatted
 
   markdown:
     name: Markdown
