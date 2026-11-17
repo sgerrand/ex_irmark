@@ -19,7 +19,7 @@ mix dialyzer                                  # CI dialyzer job (PLT in priv/plt
 mix hex.build                                 # check package contents
 ```
 
-The CI matrix covers Elixir 1.16–1.20 and OTP 24–29 (see `.github/workflows/ci.yml`). Do not use language features newer than Elixir 1.16.
+The CI matrix covers Elixir 1.16–1.20 and OTP 26–29 (see `.github/workflows/ci.yml`). Do not use language features newer than Elixir 1.16.
 
 ## How the IRmark is built
 
